@@ -12,5 +12,19 @@ service cloud.firestore {
         && request.resource.data.runs is map
         && request.resource.data.runs.size() <= 32;
     }
+    // 意見：送ることだけできる。読めるのは管理画面（Firebaseコンソール）からだけ。
+    match /feedback/{id} {
+      allow read, update, delete: if false;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['cat', 'text', 'call', 'info', 'at', 'uid'])
+        && request.resource.data.cat in ['bug', 'idea', 'other']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.call is string
+        && request.resource.data.call.size() <= 12
+        && request.resource.data.info is string
+        && request.resource.data.info.size() <= 200;
+    }
   }
 }

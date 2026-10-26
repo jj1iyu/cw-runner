@@ -97,6 +97,17 @@ header{display:flex;align-items:center;gap:10px}
 .achv summary{cursor:pointer;font-size:13px;color:var(--dim);text-align:center;padding:6px}
 .achv .chips{justify-content:flex-start;margin-top:8px}
 @media (prefers-reduced-motion:reduce){.meter i{transition:none}}
+.fb{display:flex;flex-direction:column;gap:8px}
+.fb-label{font-size:11px;color:var(--dim);letter-spacing:.1em;margin-top:6px}
+.fb textarea{font:inherit;font-size:15px;line-height:1.6;background:var(--well);color:var(--fg);border:2px solid var(--line);border-radius:10px;padding:10px 12px;resize:vertical;min-height:140px;width:100%;box-sizing:border-box}
+.fb textarea:focus{outline:none;border-color:var(--acc)}
+.fb-foot{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.fb-send{font-size:15px;padding:11px;margin-top:4px}
+.fb-send:disabled{opacity:.5;cursor:default}
+.fb-msg{min-height:1.4em;margin:0;font-size:13px;font-weight:700}
+.fb-msg.ok{color:var(--ok)} .fb-msg.ng{color:var(--bad)}
+.fb-link{margin:14px 0 0}
+.linkbtn{font:inherit;font-size:13px;color:var(--acc);background:none;border:none;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
 .led{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;border:1px solid var(--line);color:var(--dim);letter-spacing:.1em}
 .led.on{background:var(--bad);color:var(--on-bad);border-color:var(--bad)}
 .btn{font:inherit;font-size:13px;font-weight:700;background:var(--key);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
@@ -276,6 +287,30 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
       「?」を含むコール（例 JA1?）は部分コールとして送られ、該当局だけが応答します。<br>
       物理キーボードでも操作できます（F1〜F8、Enter、Space で欄移動、Esc で送信停止）。</p>
     </div>
+    <div class="grp">
+      <h3>ご意見・不具合の報告</h3>
+      <p class="note">使ってみた感想、ほしい機能、おかしな動きなどを送ってください。</p>
+      <p style="margin:6px 0 12px"><button class="btn primary" id="fbOpen1" type="button">意見を送る</button></p>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="fbSheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head"><button class="btn back" id="fbBack" type="button" aria-label="戻る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>戻る</button><h2>意見を送る</h2></div>
+    <form id="fbForm" class="fb">
+      <div class="seg" id="fbCat" role="radiogroup" aria-label="種類">
+        <button type="button" data-v="bug" aria-pressed="false">不具合</button>
+        <button type="button" data-v="idea" aria-pressed="true">要望・アイデア</button>
+        <button type="button" data-v="other" aria-pressed="false">その他</button>
+      </div>
+      <label class="fb-label" for="fbText">内容</label>
+      <textarea id="fbText" maxlength="1000" rows="7" placeholder="例：DXモードでゾーンを0付きで送る局をもっと増やしてほしい"></textarea>
+      <div class="fb-foot"><span id="fbCount">0 / 1000</span><span id="fbFrom"></span></div>
+      <button class="btn primary fb-send" id="fbSend" type="submit">送信</button>
+      <p class="fb-msg" id="fbMsg" role="status"></p>
+      <p class="note">コールサイン、使っている設定（モード・速度）、端末の種類が一緒に送られます。返信はできないので、連絡がほしい場合は本文に連絡先を書いてください。</p>
+    </form>
   </div>
 </div>
 
@@ -307,6 +342,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
       <button class="btn primary again" id="resAgain" type="button">もう一回</button>
       <div class="res-row"><button class="btn" id="resShare" type="button">結果をコピー</button><button class="btn" id="resBoard" type="button">ランキング</button><button class="btn" id="resClose" type="button">ログ</button></div>
     </div>
+    <p class="fb-link"><button class="linkbtn" id="fbOpen2" type="button">意見・不具合を送る</button></p>
     <details class="achv"><summary id="rAchSum">実績</summary><div class="chips" id="rAchAll"></div></details>
   </div>
 </div>
@@ -943,7 +979,7 @@ document.addEventListener('pointerdown',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.target.closest('[data-k]')&&(e.key==='Enter'||e.key===' ')) e.preventDefault();
-  if(!$('sheet').hidden||!$('resSheet').hidden||!$('loginSheet').hidden||!$('boardSheet').hidden) return;
+  if(!$('sheet').hidden||!$('resSheet').hidden||!$('loginSheet').hidden||!$('boardSheet').hidden||!$('fbSheet').hidden) return;
   const k=e.key;
   const fm={F1:'CQ',F2:'NR',F3:'TU',F4:'MY',F5:'HIS',F6:'B4',F7:'Q',F8:'AGN'};
   if(fm[k]){e.preventDefault();press(fm[k]);return}
@@ -1020,7 +1056,8 @@ async function connectClaude(){
   if(!db||!id) return null;
   const col=db.collection('scores');
   return {id,watch:(cb,err)=>col.onSnapshot(sn=>cb(sn.docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data()}))),err),
-    save:data=>col.doc(id).set(data)};
+    save:data=>col.doc(id).set(data),
+    feedback:data=>db.collection(`feedback/${id}/items`).doc(Date.now().toString(36)+Math.random().toString(36).slice(2,8)).set({...data,uid:id})};
 }
 async function connectFirebase(){
   const cfg=window.CW_RUNNER_FIREBASE; if(!cfg||!cfg.apiKey) return null;
@@ -1029,9 +1066,10 @@ async function connectFirebase(){
   await Promise.all([loadScript(b+'firebase-auth-compat.js'),loadScript(b+'firebase-firestore-compat.js')]);
   const app=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
   const cred=await app.auth().signInAnonymously();
-  const id=cred.user.uid, col=app.firestore().collection('scores');
+  const id=cred.user.uid, fs=app.firestore(), col=fs.collection('scores');
   return {id,watch:(cb,err)=>col.onSnapshot(sn=>cb(sn.docs.map(d=>({id:d.id,...d.data()}))),err),
-    save:data=>col.doc(id).set(data)};
+    save:data=>col.doc(id).set(data),
+    feedback:data=>fs.collection('feedback').add({...data,uid:id})};
 }
 (async()=>{
   try{BE=await connectClaude()}catch(e){BE=null}
@@ -1125,6 +1163,34 @@ function applyContest(){
 }
 $('o_contest').addEventListener('change',()=>{if(!running)applyContest();else toast('次の開始から反映されます')});
 applyContest();
+// ---------- 意見を送る ----------
+let fbCat='idea',fbBusy=false;
+function openFb(){
+  $('fbMsg').textContent='';$('fbMsg').className='fb-msg';
+  $('fbFrom').textContent='送信者：'+S.myCall;
+  $('fbSheet').hidden=false;
+}
+const devInfo=()=>{const u=navigator.userAgent;const os=/iPhone|iPad/.test(u)?'iOS':/Android/.test(u)?'Android':/Mac/.test(u)?'Mac':/Windows/.test(u)?'Windows':'other';
+  return `${os} / ${innerWidth}x${innerHeight}${matchMedia('(display-mode: standalone)').matches?' / app':''}`};
+$('fbOpen1').addEventListener('click',()=>{$('sheet').hidden=true;openFb()});
+$('fbOpen2').addEventListener('click',openFb);
+$('fbBack').addEventListener('click',()=>$('fbSheet').hidden=true);
+$('fbCat').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;fbCat=b.dataset.v;for(const x of $('fbCat').children)x.setAttribute('aria-pressed',x===b)});
+$('fbText').addEventListener('input',()=>{$('fbCount').textContent=`${$('fbText').value.length} / 1000`});
+$('fbForm').addEventListener('submit',async e=>{
+  e.preventDefault(); if(fbBusy) return;
+  const text=$('fbText').value.trim(), msg=$('fbMsg');
+  if(text.length<2){msg.className='fb-msg ng';msg.textContent='内容を書いてください';return}
+  if(!BE||!BE.feedback){msg.className='fb-msg ng';msg.textContent='送信先につながっていません。通信状態を確認して、もう一度開いてください。';return}
+  fbBusy=true;$('fbSend').disabled=true;msg.className='fb-msg';msg.textContent='送信しています…';
+  try{
+    await BE.feedback({cat:fbCat,text:text.slice(0,1000),call:String(S.myCall).slice(0,12),
+      info:`${contestLabel(S.contest)} ${modeLabel(S.mode)} ${S.wpm}WPM / ${devInfo()}`.slice(0,200),at:Date.now()});
+    $('fbText').value='';$('fbCount').textContent='0 / 1000';
+    msg.className='fb-msg ok';msg.textContent='送信しました。ありがとうございます！';
+  }catch(err){msg.className='fb-msg ng';msg.textContent='送信できませんでした。時間をおいてもう一度試してください。'}
+  fbBusy=false;$('fbSend').disabled=false;
+});
 renderLog(); renderFields(); updStats(); renderMe();
 if(!logged) openLogin();
 })();
