@@ -576,7 +576,7 @@ function makeStation(){
   }
   const cutUse=Math.random()<0.55;
   Object.assign(s,{
-    rst:Math.random()<.9?'5NN':'599', cut:cutUse, nrSent:cutUse?cut(s.nr,Math.random()<0.15):s.nr,
+    rst:Math.random()<.99?'5NN':'599', cut:cutUse, nrSent:cutUse?cut(s.nr,Math.random()<0.15):s.nr,
     wpm:Math.max(12,Math.min(50,S.wpm+(S.wpmVar?RI(-7,4):0))),
     off:(Math.random()*2-1)*S.bw*0.38,
     amp:Math.pow(10,R(-16,-3)/20),
