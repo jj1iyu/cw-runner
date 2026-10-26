@@ -288,11 +288,11 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
     <div class="sheet-head"><button class="btn back" id="backSet" type="button" aria-label="戻る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>戻る</button><h2>設定</h2><button class="btn primary" id="closeSet" type="button">完了</button></div>
     <div class="grp">
       <h3>自局</h3>
-      <label class="set"><span>コールサイン</span><input type="text" id="o_myCall" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
-      <label class="set"><span>送るナンバー（ALL JA）<small>都府県支庁ナンバー＋空中線電力</small></span><input type="text" id="o_myNr" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+      <label class="set"><span>コールサイン</span><input type="text" id="o_myCall" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+      <label class="set"><span>送るナンバー（ALL JA）<small>都府県支庁ナンバー＋空中線電力</small></span><input type="text" id="o_myNr" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
       <label class="set"><span>送るナンバー（DX）<small>CQゾーン（日本は25）</small></span><input type="text" id="o_myZone" autocomplete="off" inputmode="numeric" spellcheck="false"></label>
-      <label class="set"><span>CQ文<small>{MY} が自局コールに置き換わります</small></span><input type="text" id="o_cq" autocomplete="off" spellcheck="false" style="width:11em"></label>
-      <label class="set"><span>TU文</span><input type="text" id="o_tu" autocomplete="off" spellcheck="false"></label>
+      <label class="set"><span>CQ文<small>{MY} が自局コールに置き換わります</small></span><input type="text" id="o_cq" maxlength="40" autocomplete="off" spellcheck="false" style="width:11em"></label>
+      <label class="set"><span>TU文</span><input type="text" id="o_tu" maxlength="20" autocomplete="off" spellcheck="false"></label>
       <label class="set"><span>自局ナンバーをカットで送る<small>0→T、9→N</small></span><input type="checkbox" id="o_cutMe"></label>
     </div>
     <div class="grp">
@@ -1119,7 +1119,12 @@ $('loginForm').addEventListener('submit',e=>{
   if(BE&&myDoc&&myDoc.call!==c) (({id,...rest})=>BE.save({...rest,call:c,updatedAt:Date.now()}))(myDoc).catch(()=>{});
 });
 $('meBtn').addEventListener('click',()=>{if(running){toast('停止してから変更してください');return}openLogin()});
-document.querySelectorAll('[id^="o_"]').forEach(el=>{if(el.id==='o_myCall')el.addEventListener('change',renderMe)});
+$('o_myCall').addEventListener('change',()=>{
+  const c=$('o_myCall').value.toUpperCase();
+  if(!validCall(c)){S.myCall=logged||DEF.myCall;save();$('o_myCall').value=S.myCall;toast('コールサインの形になっていません');}
+  else{logged=c;try{localStorage.setItem('mrja-login',c)}catch(e){}if(BE&&myDoc&&myDoc.call!==c)(({id,...rest})=>BE.save({...rest,call:c,updatedAt:Date.now()}))(myDoc).catch(()=>{})}
+  renderMe();
+});
 
 // ---------- ランキング ----------
 let GA=null;const track=(n,p)=>{try{GA&&GA.logEvent(n,p||{})}catch(e){}};
@@ -1136,6 +1141,7 @@ async function connectClaude(){
   const col=db.collection('scores');
   return {id,watch:(cb,err)=>col.onSnapshot(sn=>cb(sn.docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data()}))),err),
     save:data=>col.doc(id).set(data),
+    load:async()=>{const d=await col.doc(id).get();return d.exists?{id,...d.data()}:null},
     feedback:data=>db.collection(`feedback/${id}/items`).doc(Date.now().toString(36)+Math.random().toString(36).slice(2,8)).set({...data,uid:id})};
 }
 async function connectFirebase(){
@@ -1149,6 +1155,7 @@ async function connectFirebase(){
   const id=cred.user.uid, fs=app.firestore(), col=fs.collection('scores');
   return {id,watch:(cb,err)=>col.onSnapshot(sn=>cb(sn.docs.map(d=>({id:d.id,...d.data()}))),err),
     save:data=>col.doc(id).set(data),
+    load:async()=>{const d=await col.doc(id).get();return d.exists?{id,...d.data()}:null},
     feedback:data=>fs.collection('feedback').add({...data,uid:id})};
 }
 (async()=>{
@@ -1166,6 +1173,7 @@ async function submitScore(c){
   const localBetter=!lb[key]||c.score>lb[key].score;
   if(localBetter){lb[key]=entry;try{localStorage.setItem('mrja-best',JSON.stringify(lb))}catch(e){}}
   if(!BE) return localBetter?'自己ベスト更新（ランキングに接続できないため、この端末に保存しました）':'この端末に記録しました（ランキングには接続していません）';
+  if(!myDoc&&BE.load){try{myDoc=await BE.load()}catch(e){return 'ランキングに接続できませんでした。記録はこの端末に保存しました。'}}
   const prev=myDoc&&myDoc.runs&&myDoc.runs[key];
   const better=!prev||c.score>prev.score;
   const runs={...((myDoc&&myDoc.runs)||{})};
