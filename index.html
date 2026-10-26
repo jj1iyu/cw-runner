@@ -722,7 +722,14 @@ function transmit(type){
   for(const s of st) if(s.tx) s.tx.stop();
   sendItem(item,.04);
 }
+// 送信中は受信音（ノイズ・相手局・QRM）をミュートし、自局のモニター音だけにする
+function rxMute(on){
+  if(!ctx||!rx) return;
+  const g=rx.gain,t=ctx.currentTime;
+  try{g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(on?0:1,t+0.006)}catch(e){g.value=on?0:1}
+}
 function sendItem(item,gap){
+  rxMute(true);
   myTx=play(item.text,{freq:S.pitch,amp:.5,wpm:S.wpm,t0:ctx.currentTime+gap,dest:mon});
   txBatch.push(item); showLed();
   myTimer=setTimeout(onTxEnd,(myTx.end-ctx.currentTime)*1000+30);
@@ -730,6 +737,7 @@ function sendItem(item,gap){
 function onTxEnd(){
   myTx=null;
   if(txQueue.length){ sendItem(txQueue.shift(),7*1.2/S.wpm); return }
+  rxMute(false);
   const batch=txBatch; txBatch=[]; showLed();
   for(const it of batch) onSent(it.type,it.info);
 }
@@ -738,7 +746,7 @@ function showLed(){
   led.textContent=txQueue.length?`TX+${txQueue.length}`:'TX';
 }
 function stopTx(){
-  if(myTx){myTx.stop();myTx=null} clearTimeout(myTimer); txQueue=[]; txBatch=[]; showLed();
+  if(myTx){myTx.stop();myTx=null} clearTimeout(myTimer); txQueue=[]; txBatch=[]; rxMute(false); showLed();
 }
 
 function onSent(type,info){
