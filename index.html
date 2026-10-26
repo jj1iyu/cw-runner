@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>CW Runner</title>
+<title>JA CW Runner</title>
 <meta name="description" content="スマホでもPCでも遊べるCWコンテスト練習シミュレータ（ALL JA／DX）">
 <meta name="theme-color" content="#0f1b2d">
 <link rel="manifest" href="manifest.webmanifest">
@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="CW Runner">
+<meta name="apple-mobile-web-app-title" content="JA CW Runner">
 <style>
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
 body{margin:0;font-size:14px}
@@ -107,6 +107,7 @@ header{display:flex;align-items:center;gap:10px}
 .fb-msg{min-height:1.4em;margin:0;font-size:13px;font-weight:700}
 .fb-msg.ok{color:var(--ok)} .fb-msg.ng{color:var(--bad)}
 .fb-link{margin:14px 0 0}
+.grecaptcha-badge{visibility:hidden!important}
 .linkbtn{font:inherit;font-size:13px;color:var(--acc);background:none;border:none;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
 .led{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;border:1px solid var(--line);color:var(--dim);letter-spacing:.1em}
 .led.on{background:var(--bad);color:var(--on-bad);border-color:var(--bad)}
@@ -244,7 +245,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
 
 <div class="app">
   <header>
-    <div class="brand"><small id="brandSub">CW RUNNER · ALL JA</small><button class="me" id="meBtn" type="button" aria-label="コールサインを変更"></button></div>
+    <div class="brand"><small id="brandSub">JA CW RUNNER · ALL JA</small><button class="me" id="meBtn" type="button" aria-label="コールサインを変更"></button></div>
     <span class="led" id="led">TX</span>
     <button class="btn" id="boardBtn" type="button">順位</button>
     <button class="btn" id="setBtn" type="button">設定</button>
@@ -337,6 +338,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
       <h3>ご意見・不具合の報告</h3>
       <p class="note">使ってみた感想、ほしい機能、おかしな動きなどを送ってください。</p>
       <p class="note">このサイトでは、利用状況（遊ばれた回数や得点の傾向など）の集計に Google アナリティクスを使っています。個人を特定する情報は集めていません。</p>
+      <p class="note">ランキングと意見の送信は reCAPTCHA で保護されています。Google の<a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--acc)">プライバシーポリシー</a>と<a href="https://policies.google.com/terms" target="_blank" rel="noopener" style="color:var(--acc)">利用規約</a>が適用されます。</p>
       <p style="margin:6px 0 12px"><button class="btn primary" id="fbOpen1" type="button">意見を送る</button></p>
     </div>
   </div>
@@ -396,7 +398,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
 
 <div class="sheet" id="loginSheet" hidden>
   <form class="login-in" id="loginForm">
-    <h2>CW RUNNER</h2>
+    <h2>JA CW RUNNER</h2>
     <p>コールサインでログインします。送信するコールとランキングの名前に使われます。</p>
     <input type="text" id="loginCall" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="JA1ZZZ" maxlength="12" aria-label="コールサイン">
     <div class="err" id="loginErr"></div>
@@ -1008,7 +1010,7 @@ function showResults(finished){
   $('rAchSum').textContent=`実績 ${Object.keys(got).length} / ${ACH.length}（一覧を見る）`;
   $('rAchAll').innerHTML=ACH.map(a=>chip(a,got[a[0]]?'':'locked')).join('');
   $('rDays').innerHTML=days>=2?`<b>${days}日連続</b>で練習中`:'';
-  lastShare=`CW Runner ${contestLabel(RUN.contest)} ${+RUN.dur?RUN.dur+'分':''} ${modeLabel(RUN.mode)}\n${S.myCall}: ${c.score}点（${c.q}QSO × ${c.mult}マルチ）正確さ${Math.round(acc*100)}%\n称号「${TIERS[ti][1]}」${fresh.length?' / 新実績 '+fresh.map(a=>a[1]).join('・'):''}`;
+  lastShare=`JA CW Runner ${contestLabel(RUN.contest)} ${+RUN.dur?RUN.dur+'分':''} ${modeLabel(RUN.mode)}\n${S.myCall}: ${c.score}点（${c.q}QSO × ${c.mult}マルチ）正確さ${Math.round(acc*100)}%\n称号「${TIERS[ti][1]}」${fresh.length?' / 新実績 '+fresh.map(a=>a[1]).join('・'):''}`;
   $('rBoard').textContent=timed?'ランキングに記録しています…':'';
   $('resSheet').hidden=false;$('resSheet').scrollTop=0;
   track('run_end',{contest:RUN.contest,mode:RUN.mode,dur:+RUN.dur,finished:finished?1:0,score:c.score,qso:c.q,acc:Math.round(acc*100),tier:TIERS[ti][1]});
@@ -1131,6 +1133,10 @@ let GA=null;const track=(n,p)=>{try{GA&&GA.logEvent(n,p||{})}catch(e){}};
 let BE=null,ME=null,boardData=[],myDoc=null,dbState='wait';
 const BV={contest:S.contest,mode:S.mode,dur:+S.dur?String(S.dur):'10'};
 const keyOf=(c,m,d)=>c==='dx'?`dx-${m}-${d}`:`${m}-${d}`;
+const QMAX={5:34,10:67,30:200,60:400};   // 1時間400局のペース
+const MMAX={ja:60,dx:200};               // ALL JA：都府県46＋北海道14振興局、DX：ゾーン40＋エンティティ
+const capOf=key=>{const m=key.match(/^(dx-)?(pile|single)-(5|10|30|60)$/);return m?{q:QMAX[m[3]],m:MMAX[m[1]?'dx':'ja']}:null};
+const validRun=(key,r)=>{const c=capOf(key);return !!c&&r&&[r.score,r.q,r.mult].every(Number.isInteger)&&r.q>=0&&r.q<=c.q&&r.mult>=0&&r.mult<=c.m&&r.score===r.q*r.mult};
 const loadScript=src=>new Promise((ok,ng)=>{const e=document.createElement('script');e.src=src;e.onload=ok;e.onerror=ng;document.head.appendChild(e)});
 // ランキングの保存先：claude.ai上ではそのデータ機能、自サイトでは config.js の Firebase、どちらも無ければ端末内のみ
 async function connectClaude(){
@@ -1150,6 +1156,13 @@ async function connectFirebase(){
   await loadScript(b+'firebase-app-compat.js');
   await Promise.all([loadScript(b+'firebase-auth-compat.js'),loadScript(b+'firebase-firestore-compat.js')]);
   const app=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
+  // ボットチェック（App Check）：ランキングや意見の通信が本物のページから来たかを確かめる
+  if(cfg.appCheckKey){
+    try{
+      await loadScript(b+'firebase-app-check-compat.js');
+      app.appCheck().activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(cfg.appCheckKey),true);
+    }catch(e){}
+  }
   if(cfg.measurementId) loadScript(b+'firebase-analytics-compat.js').then(()=>{try{GA=app.analytics()}catch(e){}}).catch(()=>{});
   const cred=await app.auth().signInAnonymously();
   const id=cred.user.uid, fs=app.firestore(), col=fs.collection('scores');
@@ -1172,11 +1185,12 @@ async function submitScore(c){
   let lb={};try{lb=JSON.parse(localStorage.getItem('mrja-best')||'{}')}catch(e){}
   const localBetter=!lb[key]||c.score>lb[key].score;
   if(localBetter){lb[key]=entry;try{localStorage.setItem('mrja-best',JSON.stringify(lb))}catch(e){}}
+  if(!validRun(key,entry)) return 'この記録は上限（1時間400局のペース）を超えているため、ランキングには載りません。';
   if(!BE) return localBetter?'自己ベスト更新（ランキングに接続できないため、この端末に保存しました）':'この端末に記録しました（ランキングには接続していません）';
   if(!myDoc&&BE.load){try{myDoc=await BE.load()}catch(e){return 'ランキングに接続できませんでした。記録はこの端末に保存しました。'}}
   const prev=myDoc&&myDoc.runs&&myDoc.runs[key];
   const better=!prev||c.score>prev.score;
-  const runs={...((myDoc&&myDoc.runs)||{})};
+  const runs={};for(const [k,v] of Object.entries((myDoc&&myDoc.runs)||{}))if(validRun(k,v))runs[k]=v;
   if(better) runs[key]=entry;
   try{
     await BE.save({call:S.myCall,runs,plays:((myDoc&&myDoc.plays)||0)+1,updatedAt:Date.now()});
@@ -1197,7 +1211,7 @@ const contestLabel=c=>c==='dx'?'DX':'ALL JA';
 const modeLabel=m=>m==='single'?'シングルコール':'パイルアップ';
 const durLabel=d=>d+'分';
 function rankList(key){
-  return boardData.filter(d=>d.runs&&d.runs[key]&&typeof d.runs[key].score==='number')
+  return boardData.filter(d=>d.runs&&d.runs[key]&&validRun(key,d.runs[key]))
     .map(d=>({id:d.id,call:String(d.call||'?'),...d.runs[key]}))
     .sort((a,b)=>b.score-a.score||b.q-a.q)
     // 同じコールが別の端末から登録されていても、最高点の1件だけを載せる
@@ -1246,7 +1260,7 @@ $('padToggle').addEventListener('click',()=>{showPad=!showPad;try{localStorage.s
 applyPad();
 function applyContest(){
   const c=running?RUN.contest:S.contest;
-  $('brandSub').textContent='CW RUNNER · '+contestLabel(c);
+  $('brandSub').textContent='JA CW RUNNER · '+contestLabel(c);
   $('nrLabel').textContent=c==='dx'?'NR (例 14)':'NR (例 13M)';
 }
 $('o_contest').addEventListener('change',()=>{if(!running)applyContest();else toast('次の開始から反映されます')});

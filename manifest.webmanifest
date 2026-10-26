@@ -1,6 +1,6 @@
 {
-  "name": "CW Runner",
-  "short_name": "CW Runner",
+  "name": "JA CW Runner",
+  "short_name": "JA CW Runner",
   "description": "CWコンテストのパイルアップ練習シミュレータ（ALL JA／DX）",
   "lang": "ja",
   "start_url": "./",

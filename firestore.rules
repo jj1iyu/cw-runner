@@ -1,6 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // 1回分の記録：決まった項目だけ、QSO数とマルチは上限以内、得点 = QSO × マルチ
+    function okRun(r, maxQ, maxM) {
+      return r is map
+        && r.keys().hasOnly(['score', 'q', 'mult', 'rate', 'wpm', 'act', 'at'])
+        && r.score is int && r.q is int && r.mult is int
+        && r.q >= 0 && r.q <= maxQ
+        && r.mult >= 0 && r.mult <= maxM
+        && r.score == r.q * r.mult
+        && r.get('rate', 0) is int && r.get('wpm', 0) is int
+        && r.get('act', 0) is int && r.get('at', 0) is int;
+    }
+
+    // カテゴリは16種類だけ。上限は1時間400局のペース（5分34・10分67・30分200・60分400局）、
+    // マルチは ALL JA 60・DX 200
+    function okRuns(rs) {
+      return rs is map
+        && rs.keys().hasOnly(['pile-5', 'pile-10', 'pile-30', 'pile-60', 'single-5', 'single-10', 'single-30', 'single-60', 'dx-pile-5', 'dx-pile-10', 'dx-pile-30', 'dx-pile-60', 'dx-single-5', 'dx-single-10', 'dx-single-30', 'dx-single-60'])
+        && (!('pile-5' in rs) || okRun(rs['pile-5'], 34, 60)) && (!('pile-10' in rs) || okRun(rs['pile-10'], 67, 60)) && (!('pile-30' in rs) || okRun(rs['pile-30'], 200, 60)) && (!('pile-60' in rs) || okRun(rs['pile-60'], 400, 60)) && (!('single-5' in rs) || okRun(rs['single-5'], 34, 60)) && (!('single-10' in rs) || okRun(rs['single-10'], 67, 60)) && (!('single-30' in rs) || okRun(rs['single-30'], 200, 60)) && (!('single-60' in rs) || okRun(rs['single-60'], 400, 60)) && (!('dx-pile-5' in rs) || okRun(rs['dx-pile-5'], 34, 200)) && (!('dx-pile-10' in rs) || okRun(rs['dx-pile-10'], 67, 200)) && (!('dx-pile-30' in rs) || okRun(rs['dx-pile-30'], 200, 200)) && (!('dx-pile-60' in rs) || okRun(rs['dx-pile-60'], 400, 200)) && (!('dx-single-5' in rs) || okRun(rs['dx-single-5'], 34, 200)) && (!('dx-single-10' in rs) || okRun(rs['dx-single-10'], 67, 200)) && (!('dx-single-30' in rs) || okRun(rs['dx-single-30'], 200, 200)) && (!('dx-single-60' in rs) || okRun(rs['dx-single-60'], 400, 200));
+    }
+
     // ランキング：誰でも読める。書けるのは自分の行だけ。
     match /scores/{uid} {
       allow read: if true;
@@ -9,9 +30,11 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['call', 'runs', 'plays', 'updatedAt'])
         && request.resource.data.call is string
         && request.resource.data.call.size() <= 12
-        && request.resource.data.runs is map
-        && request.resource.data.runs.size() <= 32;
+        && request.resource.data.plays is int
+        && request.resource.data.updatedAt is int
+        && okRuns(request.resource.data.runs);
     }
+
     // 意見：送ることだけできる。読めるのは管理画面（Firebaseコンソール）からだけ。
     match /feedback/{id} {
       allow read, update, delete: if false;
