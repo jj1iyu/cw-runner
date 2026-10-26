@@ -8,7 +8,8 @@ window.CW_RUNNER_FIREBASE = {
   projectId: "cw-runner",
   storageBucket: "cw-runner.firebasestorage.app",
   messagingSenderId: "610273887456",
-  appId: "1:610273887456:web:28a6b2052f403334177c85"
+  appId: "1:610273887456:web:28a6b2052f403334177c85",
+  measurementId: "G-47V3FC5MHW"
 };
 
 /* 貼り付け例：

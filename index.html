@@ -290,6 +290,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
     <div class="grp">
       <h3>ご意見・不具合の報告</h3>
       <p class="note">使ってみた感想、ほしい機能、おかしな動きなどを送ってください。</p>
+      <p class="note">このサイトでは、利用状況（遊ばれた回数や得点の傾向など）の集計に Google アナリティクスを使っています。個人を特定する情報は集めていません。</p>
       <p style="margin:6px 0 12px"><button class="btn primary" id="fbOpen1" type="button">意見を送る</button></p>
     </div>
   </div>
@@ -830,6 +831,7 @@ async function start(){
   applyAudio();
   st=[];adr=null;worked=new Map();logArr=[];wipe();renderLog();
   RUN={contest:S.contest,mode:S.mode,dur:S.dur,b4ok:0};applyContest();
+  track('run_start',{contest:RUN.contest,mode:RUN.mode,dur:+RUN.dur,wpm:S.wpm,src:S.src});
   running=true;t0=Date.now();
   $('runBtn').textContent='停止'; $('runBtn').classList.remove('primary');
   tick=setInterval(updStats,250); qrmT=setInterval(qrmLoop,4000); updStats();
@@ -938,6 +940,7 @@ function showResults(finished){
   lastShare=`CW Runner ${contestLabel(RUN.contest)} ${+RUN.dur?RUN.dur+'分':''} ${modeLabel(RUN.mode)}\n${S.myCall}: ${c.score}点（${c.q}QSO × ${c.mult}マルチ）正確さ${Math.round(acc*100)}%\n称号「${TIERS[ti][1]}」${fresh.length?' / 新実績 '+fresh.map(a=>a[1]).join('・'):''}`;
   $('rBoard').textContent=timed?'ランキングに記録しています…':'';
   $('resSheet').hidden=false;$('resSheet').scrollTop=0;
+  track('run_end',{contest:RUN.contest,mode:RUN.mode,dur:+RUN.dur,finished:finished?1:0,score:c.score,qso:c.q,acc:Math.round(acc*100),tier:TIERS[ti][1]});
   if(timed) submitScore(c).then(t=>{$('rBoard').textContent=t;lastShare+='\n'+t.split('\n')[0]});
 }
 $('resAgain').addEventListener('click',()=>{$('resSheet').hidden=true;start()});
@@ -1044,6 +1047,7 @@ $('meBtn').addEventListener('click',()=>{if(running){toast('停止してから�
 document.querySelectorAll('[id^="o_"]').forEach(el=>{if(el.id==='o_myCall')el.addEventListener('change',renderMe)});
 
 // ---------- ランキング ----------
+let GA=null;const track=(n,p)=>{try{GA&&GA.logEvent(n,p||{})}catch(e){}};
 let BE=null,ME=null,boardData=[],myDoc=null,dbState='wait';
 const BV={contest:S.contest,mode:S.mode,dur:+S.dur?String(S.dur):'10'};
 const keyOf=(c,m,d)=>c==='dx'?`dx-${m}-${d}`:`${m}-${d}`;
@@ -1065,6 +1069,7 @@ async function connectFirebase(){
   await loadScript(b+'firebase-app-compat.js');
   await Promise.all([loadScript(b+'firebase-auth-compat.js'),loadScript(b+'firebase-firestore-compat.js')]);
   const app=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
+  if(cfg.measurementId) loadScript(b+'firebase-analytics-compat.js').then(()=>{try{GA=app.analytics()}catch(e){}}).catch(()=>{});
   const cred=await app.auth().signInAnonymously();
   const id=cred.user.uid, fs=app.firestore(), col=fs.collection('scores');
   return {id,watch:(cb,err)=>col.onSnapshot(sn=>cb(sn.docs.map(d=>({id:d.id,...d.data()}))),err),
@@ -1187,7 +1192,7 @@ $('fbForm').addEventListener('submit',async e=>{
     await BE.feedback({cat:fbCat,text:text.slice(0,1000),call:String(S.myCall).slice(0,12),
       info:`${contestLabel(S.contest)} ${modeLabel(S.mode)} ${S.wpm}WPM / ${devInfo()}`.slice(0,200),at:Date.now()});
     $('fbText').value='';$('fbCount').textContent='0 / 1000';
-    msg.className='fb-msg ok';msg.textContent='送信しました。ありがとうございます！';
+    msg.className='fb-msg ok';msg.textContent='送信しました。ありがとうございます！';track('feedback_send',{cat:fbCat});
   }catch(err){msg.className='fb-msg ng';msg.textContent='送信できませんでした。時間をおいてもう一度試してください。'}
   fbBusy=false;$('fbSend').disabled=false;
 });
