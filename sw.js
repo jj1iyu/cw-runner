@@ -1,6 +1,6 @@
 // CW Runner のサービスワーカー（オフライン対応）
 // アプリを更新したら VERSION の数字を上げてください。
-const VERSION = 'cw-runner-v4';
+const VERSION = 'cw-runner-v5';
 const SHELL = [
   './',
   './index.html',
