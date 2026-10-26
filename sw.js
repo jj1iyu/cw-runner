@@ -1,6 +1,6 @@
 // JA CW Runner のサービスワーカー（オフライン対応）
 // アプリを更新したら VERSION の数字を上げてください。
-const VERSION = 'cw-runner-v11';
+const VERSION = 'cw-runner-v12';
 const SHELL = [
   './',
   './index.html',
@@ -37,7 +37,8 @@ self.addEventListener('fetch', e => {
   // 自サイトのファイル：通信できれば最新版、オフラインならキャッシュ
   if (url.origin === location.origin) {
     e.respondWith(
-      fetch(req).then(res => {
+      // ブラウザの一時保存を使わず、毎回サーバーに最新かどうか確認する
+      fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(res => {
         const copy = res.clone();
         caches.open(VERSION).then(c => c.put(req, copy));
         return res;
