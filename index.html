@@ -269,7 +269,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
       <label class="set"><span>ピッチ</span><input type="range" id="o_pitch" min="300" max="900" step="10"><output id="w_pitch"></output></label>
       <label class="set"><span>帯域幅</span><input type="range" id="o_bw" min="100" max="800" step="50"><output id="w_bw"></output></label>
       <label class="set"><span>音量</span><input type="range" id="o_vol" min="0" max="1" step="0.05"><output id="w_vol"></output></label>
-      <label class="set"><span>相手局の信号の強さ</span><input type="range" id="o_sig" min="0.5" max="3" step="0.1"><output id="w_sig"></output></label>
+      <label class="set"><span>相手局の信号の強さ</span><input type="range" id="o_sigP" min="0.1" max="1" step="0.05"><output id="w_sigP"></output></label>
       <label class="set"><span>ノイズの量</span><input type="range" id="o_noise" min="0" max="1" step="0.05"><output id="w_noise"></output></label>
       <label class="set"><span>モニター（自局送信音）</span><input type="range" id="o_mon" min="0" max="1" step="0.05"><output id="w_mon"></output></label>
     </div>
@@ -279,6 +279,11 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
       <label class="set"><span>QRM<small>近くで他局が運用</small></span><input type="checkbox" id="o_qrm"></label>
       <label class="set"><span>QRN<small>空電ノイズ</small></span><input type="checkbox" id="o_qrn"></label>
       <label class="set"><span>フラッター</span><input type="checkbox" id="o_flutter"></label>
+    </div>
+    <div class="grp">
+      <h3>初期設定</h3>
+      <p class="note">コールサイン以外の設定を、最初の状態に戻します。</p>
+      <p style="margin:6px 0 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="resetSet" type="button">初期設定に戻す</button><button class="btn primary" id="resetYes" type="button" hidden>戻す</button><button class="btn" id="resetNo" type="button" hidden>やめる</button></p>
     </div>
     <div class="grp">
       <h3>操作</h3>
@@ -375,7 +380,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
 <script>
 (()=>{
 // ---------- 設定 ----------
-const DEF={src:'real',myCall:'JA1ZZZ',myNr:'10M',myZone:'25',contest:'ja',cq:'CQ TEST {MY} TEST',tu:'TU',cutMe:true,mode:'pile',dur:'10',act:4,wpm:28,wpmVar:true,pitch:600,bw:400,vol:0.7,mon:0.35,qsb:true,qrm:true,sig:1.5,noise:0.35,qrn:false,flutter:false};
+const DEF={src:'real',myCall:'JA1ZZZ',myNr:'10H',myZone:'25',contest:'ja',cq:'CQ TEST {MY} TEST',tu:'TU',cutMe:true,mode:'single',dur:'5',act:4,wpm:24,wpmVar:true,pitch:600,bw:400,vol:0.7,mon:0.35,qsb:false,qrm:false,sigP:0.5,noise:0.35,qrn:false,flutter:false};
 let S={...DEF};
 try{const j=JSON.parse(localStorage.getItem('mrja')||'null'); if(j) S={...DEF,...j};}catch(e){}
 const save=()=>{try{localStorage.setItem('mrja',JSON.stringify(S))}catch(e){}};
@@ -606,7 +611,7 @@ function play(text,o){
 }
 function say(s,text,delay){
   if(s.tx) s.tx.stop();
-  s.tx=play(text,{freq:S.pitch+s.off,amp:s.amp*S.sig,wpm:s.wpm,t0:ctx.currentTime+delay,dest:rx,qsb:S.qsb&&s.fades,flutter:S.flutter&&s.flut});
+  s.tx=play(text,{freq:S.pitch+s.off,amp:s.amp*S.sigP*3,wpm:s.wpm,t0:ctx.currentTime+delay,dest:rx,qsb:S.qsb&&s.fades,flutter:S.flutter&&s.flut});
 }
 
 // ---------- 運用ロジック ----------
@@ -1005,7 +1010,7 @@ $('runBtn').addEventListener('click',()=>running?stop(true,false):start());
 $('resClose').addEventListener('click',()=>$('resSheet').hidden=true);
 
 // ---------- 設定画面 ----------
-const fmtO={act:v=>v,wpm:v=>v+' WPM',pitch:v=>v+' Hz',bw:v=>v+' Hz',vol:v=>Math.round(v*100)+'%',mon:v=>Math.round(v*100)+'%',sig:v=>'×'+(+v).toFixed(1),noise:v=>Math.round(v*100)+'%'};
+const fmtO={act:v=>v,wpm:v=>v+' WPM',pitch:v=>v+' Hz',bw:v=>v+' Hz',vol:v=>Math.round(v*100)+'%',mon:v=>Math.round(v*100)+'%',sigP:v=>Math.round(v*100)+'%',noise:v=>Math.round(v*100)+'%'};
 function loadForm(){
   for(const k in DEF){
     const el=$('o_'+k); if(!el) continue;
@@ -1026,6 +1031,10 @@ document.querySelectorAll('[id^="o_"]').forEach(el=>{
 $('setBtn').addEventListener('click',()=>{loadForm();$('sheet').hidden=false});
 const closeSet=()=>{$('sheet').hidden=true;if(!S.myCall){S.myCall=DEF.myCall;save()}};
 $('closeSet').addEventListener('click',closeSet);
+const resetUI=on=>{$('resetSet').hidden=on;$('resetYes').hidden=!on;$('resetNo').hidden=!on};
+$('resetSet').addEventListener('click',()=>{if(running){toast('停止してから変更してください');return}resetUI(true)});
+$('resetNo').addEventListener('click',()=>resetUI(false));
+$('resetYes').addEventListener('click',()=>{const call=S.myCall;S={...DEF,myCall:call};save();loadForm();applyAudio();applyContest();updStats();resetUI(false);toast('初期設定に戻しました')});
 $('backSet').addEventListener('click',closeSet);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('sheet').hidden)closeSet()});
 
