@@ -22,17 +22,35 @@ service cloud.firestore {
         && (!('pile-5' in rs) || okRun(rs['pile-5'], 34, 60)) && (!('pile-10' in rs) || okRun(rs['pile-10'], 67, 60)) && (!('pile-30' in rs) || okRun(rs['pile-30'], 200, 60)) && (!('pile-60' in rs) || okRun(rs['pile-60'], 400, 60)) && (!('single-5' in rs) || okRun(rs['single-5'], 34, 60)) && (!('single-10' in rs) || okRun(rs['single-10'], 67, 60)) && (!('single-30' in rs) || okRun(rs['single-30'], 200, 60)) && (!('single-60' in rs) || okRun(rs['single-60'], 400, 60)) && (!('dx-pile-5' in rs) || okRun(rs['dx-pile-5'], 34, 200)) && (!('dx-pile-10' in rs) || okRun(rs['dx-pile-10'], 67, 200)) && (!('dx-pile-30' in rs) || okRun(rs['dx-pile-30'], 200, 200)) && (!('dx-pile-60' in rs) || okRun(rs['dx-pile-60'], 400, 200)) && (!('dx-single-5' in rs) || okRun(rs['dx-single-5'], 34, 200)) && (!('dx-single-10' in rs) || okRun(rs['dx-single-10'], 67, 200)) && (!('dx-single-30' in rs) || okRun(rs['dx-single-30'], 200, 200)) && (!('dx-single-60' in rs) || okRun(rs['dx-single-60'], 400, 200));
     }
 
+    // 練習回数：1回の保存で増やせるのは1回だけ。前回の完走から4分30秒以上空ける。
+    // 今月・今日の回数は月や日が変わったら0から。1日30回まで。連続日数は1日に1つまで増やせる。
+    function okCounts(n, o) {
+      let inc = n.plays - o.get('plays', 0);
+      let sameMonth = n.month == o.get('month', '');
+      let sameDay = n.lastDay == o.get('lastDay', '');
+      let now = request.time.toMillis();
+      return n.plays is int && n.updatedAt is int
+        && n.month is string && n.month.size() == 7
+        && n.lastDay is string && n.lastDay.size() == 10
+        && n.monthPlays is int && n.dayPlays is int && n.streak is int
+        && (inc == 0 || inc == 1)
+        && n.monthPlays >= 0 && n.monthPlays <= (sameMonth ? o.get('monthPlays', 0) : 0) + inc
+        && n.dayPlays >= 0 && n.dayPlays <= 30 && n.dayPlays <= (sameDay ? o.get('dayPlays', 0) : 0) + inc
+        && n.streak >= 0 && n.streak <= (sameDay ? o.get('streak', 0) : o.get('streak', 0) + 1)
+        && (inc == 0 || (n.updatedAt >= o.get('updatedAt', 0) + 270000
+                         && n.updatedAt <= now + 900000 && n.updatedAt >= now - 900000));
+    }
+
     // ランキング：誰でも読める。書けるのは自分の行だけ。
     match /scores/{uid} {
       allow read: if true;
       allow write: if request.auth != null
         && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['call', 'runs', 'plays', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['call', 'runs', 'plays', 'updatedAt', 'month', 'monthPlays', 'lastDay', 'dayPlays', 'streak'])
         && request.resource.data.call is string
         && request.resource.data.call.size() <= 12
-        && request.resource.data.plays is int
-        && request.resource.data.updatedAt is int
-        && okRuns(request.resource.data.runs);
+        && okRuns(request.resource.data.runs)
+        && okCounts(request.resource.data, resource == null ? {} : resource.data);
     }
 
     // 意見：送ることだけできる。読めるのは管理画面（Firebaseコンソール）からだけ。

@@ -54,6 +54,9 @@ header{display:flex;align-items:center;gap:10px}
 .brow.mine{background:var(--acc-dim)}
 .brow .sc{text-align:right;font-weight:700;color:var(--acc)}
 .brow .sub{text-align:right;color:var(--dim);font-size:12px}
+.brow .pc{display:block;font-size:10px;color:var(--dim);font-weight:500;letter-spacing:0}
+.brow.prow{grid-template-columns:2.2em 1fr 4.2em 4.2em 3.4em}
+.seg-main button{font-size:14px;padding:9px 4px}
 .brow .cs{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
 .login-in{max-width:420px;margin:0 auto;padding-block:12vh 40px;padding-left:max(20px,calc(env(safe-area-inset-left,0px) + 12px));padding-right:max(20px,calc(env(safe-area-inset-right,0px) + 12px));display:flex;flex-direction:column;gap:14px;-webkit-user-select:text;user-select:text}
 .login-in h2{font-family:var(--mono);font-size:22px;letter-spacing:.1em;margin:0;text-wrap:balance}
@@ -410,9 +413,12 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--key);border:1px soli
 <div class="sheet" id="boardSheet" hidden>
   <div class="sheet-in">
     <div class="sheet-head"><button class="btn back" id="boardBack" type="button" aria-label="戻る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>戻る</button><h2>ランキング</h2></div>
+    <div class="seg seg-main" id="segKind"><button type="button" data-v="score">スコア</button><button type="button" data-v="practice">練習量（今月）</button></div>
+    <div id="scoreTabs">
     <div class="seg" id="segContest"><button type="button" data-v="ja">ALL JA</button><button type="button" data-v="dx">DX</button></div>
     <div class="seg" id="segMode"><button type="button" data-v="pile">パイルアップ</button><button type="button" data-v="single">シングルコール</button></div>
     <div class="seg" id="segDur"><button type="button" data-v="5">5分</button><button type="button" data-v="10">10分</button><button type="button" data-v="30">30分</button><button type="button" data-v="60">60分</button></div>
+    </div>
     <div class="board" id="boardList"></div>
     <p class="note" id="boardNote"></p>
   </div>
@@ -1118,20 +1124,20 @@ $('loginForm').addEventListener('submit',e=>{
   if(!validCall(c)){$('loginErr').textContent='コールサインの形になっていません（例 JA1ZZZ、7K4ABC/1）';return}
   S.myCall=c;save();logged=c;try{localStorage.setItem('mrja-login',c)}catch(e){}
   $('loginSheet').hidden=true;renderMe();
-  if(BE&&myDoc&&myDoc.call!==c) (({id,...rest})=>BE.save({...rest,call:c,updatedAt:Date.now()}))(myDoc).catch(()=>{});
+  if(BE&&myDoc&&myDoc.call!==c){const d=docOf(myDoc,{call:c});BE.save(d).then(()=>{myDoc={...d,id:ME}}).catch(()=>{})}
 });
 $('meBtn').addEventListener('click',()=>{if(running){toast('停止してから変更してください');return}openLogin()});
 $('o_myCall').addEventListener('change',()=>{
   const c=$('o_myCall').value.toUpperCase();
   if(!validCall(c)){S.myCall=logged||DEF.myCall;save();$('o_myCall').value=S.myCall;toast('コールサインの形になっていません');}
-  else{logged=c;try{localStorage.setItem('mrja-login',c)}catch(e){}if(BE&&myDoc&&myDoc.call!==c)(({id,...rest})=>BE.save({...rest,call:c,updatedAt:Date.now()}))(myDoc).catch(()=>{})}
+  else{logged=c;try{localStorage.setItem('mrja-login',c)}catch(e){}if(BE&&myDoc&&myDoc.call!==c){const d=docOf(myDoc,{call:c});BE.save(d).then(()=>{myDoc={...d,id:ME}}).catch(()=>{})}}
   renderMe();
 });
 
 // ---------- ランキング ----------
 let GA=null;const track=(n,p)=>{try{GA&&GA.logEvent(n,p||{})}catch(e){}};
 let BE=null,ME=null,boardData=[],myDoc=null,dbState='wait';
-const BV={contest:S.contest,mode:S.mode,dur:+S.dur?String(S.dur):'10'};
+const BV={kind:'score',contest:S.contest,mode:S.mode,dur:+S.dur?String(S.dur):'10'};
 const keyOf=(c,m,d)=>c==='dx'?`dx-${m}-${d}`:`${m}-${d}`;
 const QMAX={5:34,10:67,30:200,60:400};   // 1時間400局のペース
 const MMAX={ja:60,dx:200};               // ALL JA：都府県46＋北海道14振興局、DX：ゾーン40＋エンティティ
@@ -1192,9 +1198,17 @@ async function submitScore(c){
   const better=!prev||c.score>prev.score;
   const runs={};for(const [k,v] of Object.entries((myDoc&&myDoc.runs)||{}))if(validRun(k,v))runs[k]=v;
   if(better) runs[key]=entry;
+  let cnt=countRun(myDoc);
+  let newDoc={...cnt.doc,call:S.myCall,runs};
   try{
-    await BE.save({call:S.myCall,runs,plays:((myDoc&&myDoc.plays)||0)+1,updatedAt:Date.now()});
-    myDoc={...(myDoc||{}),id:ME,call:S.myCall,runs};
+    try{ await BE.save(newDoc); }
+    catch(e){
+      // 端末の時計が大きくずれている等で練習回数の加算が弾かれたときは、回数は増やさず記録だけ保存する
+      if(!cnt.counted) throw e;
+      cnt={counted:false,doc:docOf(myDoc)}; newDoc={...cnt.doc,call:S.myCall,runs};
+      await BE.save(newDoc);
+    }
+    myDoc={...newDoc,id:ME};
     if(!boardData.some(x=>x.id===ME)) boardData.push(myDoc); else boardData=boardData.map(x=>x.id===ME?myDoc:x);
     const list=rankList(key), rank=list.findIndex(x=>x.id===ME)+1;
     Object.assign(BV,{contest:RUN.contest,mode:RUN.mode,dur:String(RUN.dur)});renderBoard();
@@ -1204,12 +1218,51 @@ async function submitScore(c){
     if(mine&&rank>1){const up=list[rank-2];rival=`あと ${up.score-mine.score+1} 点で ${up.call} を抜いて ${rank-1}位！`}
     else if(mine&&rank===1&&list.length>1) rival=`1位キープ中。2位の ${list[1].call} とは ${mine.score-list[1].score} 点差`;
     else if(mine&&rank===1) rival='ランキング1位！ 仲間を誘って勝負しよう';
-    return (better?`${cat}で ${rank||'—'}位 / ${list.length}人`:`${cat}の順位は ${rank}位 / ${list.length}人`)+(rival?'\n'+rival:'');
+    const pl=practiceList(), prank=pl.findIndex(x=>x.id===ME)+1;
+    const pmsg=cnt.counted?`今月 ${newDoc.monthPlays} 回目の練習${newDoc.streak>=2?`（${newDoc.streak}日連続）`:''}${prank?`　練習量 ${prank}位`:''}`:(practiceOf(myDoc).monthPlays>=0&&docOf(myDoc).dayPlays>=DAY_MAX?`今日の練習は ${DAY_MAX} 回を超えたので、練習回数には数えていません`:'今回は練習回数に数えられませんでした（端末の時計がずれている可能性があります）');
+    return (better?`${cat}で ${rank||'—'}位 / ${list.length}人`:`${cat}の順位は ${rank}位 / ${list.length}人`)+(rival?'\n'+rival:'')+'\n'+pmsg;
   }catch(e){return 'ランキングに保存できませんでした。通信状態を確認してください。'}
 }
 const contestLabel=c=>c==='dx'?'DX':'ALL JA';
+// 練習量：日付は日本時間で数える
+const jstDay=(t=Date.now())=>new Date(t+9*3600e3).toISOString().slice(0,10);
+const jstMonth=(t=Date.now())=>jstDay(t).slice(0,7);
+const DAY_MAX=30; // 1日に数える完走回数の上限
+function practiceOf(d){
+  const today=jstDay(),yest=jstDay(Date.now()-86400e3),month=jstMonth();
+  const monthPlays=d&&d.month===month?(d.monthPlays|0):0;
+  const streak=d&&(d.lastDay===today||d.lastDay===yest)?(d.streak|0):0;
+  return {plays:(d&&d.plays)|0,monthPlays,streak};
+}
+// 保存する1行分の形をそろえる（足りない項目は初期値）
+function docOf(d,patch){
+  const runs={};for(const [k,v] of Object.entries((d&&d.runs)||{}))if(validRun(k,v))runs[k]=v;
+  const base={call:String((d&&d.call)||S.myCall).slice(0,12),runs,plays:(d&&d.plays)|0,updatedAt:(d&&d.updatedAt)|0,
+    month:(d&&typeof d.month==='string'&&d.month.length===7)?d.month:jstMonth(),monthPlays:(d&&d.monthPlays)|0,
+    lastDay:(d&&typeof d.lastDay==='string'&&d.lastDay.length===10)?d.lastDay:'0000-00-00',dayPlays:(d&&d.dayPlays)|0,streak:(d&&d.streak)|0};
+  if(!(d&&typeof d.month==='string'&&d.month.length===7)) base.monthPlays=0;
+  if(!(d&&typeof d.lastDay==='string'&&d.lastDay.length===10)) base.dayPlays=0;
+  return {...base,...(patch||{})};
+}
+// 完走1回分を数えた新しい値（1日の上限を超えたら数えない）
+function countRun(d){
+  const now=Date.now(),today=jstDay(now),yest=jstDay(now-86400e3),month=jstMonth(now);
+  const b=docOf(d);
+  const sameDay=b.lastDay===today;
+  if(sameDay&&b.dayPlays>=DAY_MAX) return {doc:b,counted:false};
+  return {counted:true,doc:{...b,plays:b.plays+1,updatedAt:now,
+    month,monthPlays:(b.month===month?b.monthPlays:0)+1,
+    lastDay:today,dayPlays:(sameDay?b.dayPlays:0)+1,
+    streak:sameDay?Math.max(1,b.streak):(b.lastDay===yest?b.streak+1:1)}};
+}
 const modeLabel=m=>m==='single'?'シングルコール':'パイルアップ';
 const durLabel=d=>d+'分';
+function practiceList(){
+  return boardData.map(d=>({id:d.id,call:String(d.call||'?'),...practiceOf(d)}))
+    .filter(r=>r.monthPlays>0)
+    .sort((a,b)=>b.monthPlays-a.monthPlays||b.streak-a.streak||b.plays-a.plays)
+    .reduce((acc,r)=>{const hit=acc.find(x=>x.call===r.call);if(!hit)acc.push(r);else if(r.id===ME)hit.id=ME;return acc},[]);
+}
 function rankList(key){
   return boardData.filter(d=>d.runs&&d.runs[key]&&validRun(key,d.runs[key]))
     .map(d=>({id:d.id,call:String(d.call||'?'),...d.runs[key]}))
@@ -1222,6 +1275,8 @@ function rankList(key){
     },[]);
 }
 function renderBoard(){
+  for(const b of $('segKind').children) b.setAttribute('aria-pressed',b.dataset.v===BV.kind);
+  $('scoreTabs').hidden=BV.kind!=='score';
   for(const b of $('segContest').children) b.setAttribute('aria-pressed',b.dataset.v===BV.contest);
   for(const b of $('segMode').children) b.setAttribute('aria-pressed',b.dataset.v===BV.mode);
   for(const b of $('segDur').children) b.setAttribute('aria-pressed',b.dataset.v===BV.dur);
@@ -1234,6 +1289,7 @@ function renderBoard(){
     note.textContent=b?`この端末での自己ベスト：${b.score}点（${b.q} QSO × ${b.mult}）`:'';
     return;
   }
+  if(BV.kind==='practice'){renderPractice(box,note);return}
   const list=rankList(keyOf(BV.contest,BV.mode,BV.dur));
   if(!list.length){box.innerHTML=`<div class="empty">まだ記録がありません。${contestLabel(BV.contest)}・${durLabel(BV.dur)}・${modeLabel(BV.mode)}を最後まで走ると、ここに載ります。</div>`;note.textContent='';return}
   box.innerHTML='<div class="brow head"><span>順位</span><span>コール</span><span style="text-align:right">得点</span><span style="text-align:right">QSO×マルチ</span><span style="text-align:right">WPM</span></div>';
@@ -1242,12 +1298,29 @@ function renderBoard(){
     row.className='brow'+(i<3?' top':'')+(r.id===ME?' mine':'');
     const cells=[[String(i+1),'rk'],[r.call,'cs'],[String(r.score),'sc'],[`${r.q}×${r.mult}`,'sub'],[String(r.wpm||'—'),'sub']];
     for(const [t,c] of cells){const sp=document.createElement('span');sp.className=c;sp.textContent=t;row.appendChild(sp)}
+    const pc=practiceOf(boardData.find(d=>d.id===r.id));
+    if(pc.monthPlays){const sm=document.createElement('small');sm.className='pc';sm.textContent=`今月の練習 ${pc.monthPlays}回`;row.children[1].appendChild(sm)}
     box.appendChild(row);
   });
   const mine=list.findIndex(x=>x.id===ME);
   note.textContent=(mine>=0?`あなたは ${mine+1}位 / ${list.length}人。`:'')+'各自の自己ベストを表示しています。';
 }
-for(const [id,k] of [['segContest','contest'],['segMode','mode'],['segDur','dur']])
+function renderPractice(box,note){
+  const list=practiceList(), m=jstMonth();
+  const label=`${+m.slice(5)}月`;
+  if(!list.length){box.innerHTML=`<div class="empty">${label}はまだ誰も練習していません。時間を決めたコンテストを最後まで走ると、1回と数えます。</div>`;note.textContent='';return}
+  box.innerHTML='<div class="brow head prow"><span>順位</span><span>コール</span><span style="text-align:right">今月</span><span style="text-align:right">累計</span><span style="text-align:right">連続</span></div>';
+  list.slice(0,100).forEach((r,i)=>{
+    const row=document.createElement('div');
+    row.className='brow prow'+(i<3?' top':'')+(r.id===ME?' mine':'');
+    const cells=[[String(i+1),'rk'],[r.call,'cs'],[`${r.monthPlays}回`,'sc'],[`${r.plays}回`,'sub'],[r.streak?`${r.streak}日`:'—','sub']];
+    for(const [t,c] of cells){const sp=document.createElement('span');sp.className=c;sp.textContent=t;row.appendChild(sp)}
+    box.appendChild(row);
+  });
+  const mine=list.findIndex(x=>x.id===ME);
+  note.textContent=(mine>=0?`あなたは ${mine+1}位 / ${list.length}人。`:'')+`${label}の完走回数で順位を決めています（1日${DAY_MAX}回まで、毎月1日にリセット）。時間を決めたコンテストを最後まで走った回を数えます。`;
+}
+for(const [id,k] of [['segKind','kind'],['segContest','contest'],['segMode','mode'],['segDur','dur']])
   $(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;BV[k]=b.dataset.v;renderBoard()});
 const openBoard=()=>{renderBoard();$('boardSheet').hidden=false};
 $('boardBtn').addEventListener('click',openBoard);
