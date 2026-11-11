@@ -15,14 +15,14 @@ concurrency:
 jobs:
   test:
     name: テスト
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4 # Firestore エミュレータに必要
+      - uses: actions/setup-java@v5 # Firestore エミュレータに必要
         with:
           distribution: temurin
           java-version: 21
@@ -33,16 +33,17 @@ jobs:
         run: npm test
       - name: Firestore ルールのテスト（エミュレータ）
         run: npm run test:rules
+      - name: テスト用ブラウザの準備
+        # 追加パッケージ（フォント等）は入れず、Chromium 本体だけを入れる。足りないときだけ依存も入れる
+        run: npx playwright install chromium-headless-shell || npx playwright install --with-deps chromium-headless-shell
       - name: ブラウザでの動作テスト
-        run: |
-          npx playwright install --with-deps chromium
-          npm run test:e2e
+        run: npm run test:e2e
 
   deploy-site:
     name: サイトを公開
     needs: test
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
@@ -50,8 +51,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: ビルド
@@ -70,13 +71,13 @@ jobs:
     needs: test
     # Google Cloud との連携（docs/ADMIN.md）を設定するまでは、この手順は飛ばされます
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
