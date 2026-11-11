@@ -1,0 +1,89 @@
+# main に push すると：テスト → ビルド → GitHub Pages に公開 → Firestore のルールを反映
+# pull request では テスト と ビルド だけ行います（公開はしません）
+name: テストと公開
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: テスト
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4 # Firestore エミュレータに必要
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - name: 書式の確認
+        run: npm run format:check
+      - name: 計算の単体テスト
+        run: npm test
+      - name: Firestore ルールのテスト（エミュレータ）
+        run: npm run test:rules
+      - name: ブラウザでの動作テスト
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+
+  deploy-site:
+    name: サイトを公開
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: ビルド
+        run: node tools/build.mjs
+        env:
+          CWR_VERSION: ${{ github.sha }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-rules:
+    name: Firestore ルールを反映
+    needs: test
+    # Google Cloud との連携（docs/ADMIN.md）を設定するまでは、この手順は飛ばされます
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - name: ルールを反映
+        run: npx firebase deploy --only firestore:rules --project cw-runner --non-interactive

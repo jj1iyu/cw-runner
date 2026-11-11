@@ -1,0 +1,190 @@
+<title>JA CW Runner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+@@CSS@@</style>
+
+<div class="app">
+  <header>
+    <div class="brand"><small id="brandSub">JA CW RUNNER · ALL JA</small><button class="me" id="meBtn" type="button" aria-label="コールサインを変更"></button></div>
+    <span class="led" id="led">TX</span>
+    <button class="btn" id="boardBtn" type="button">順位</button>
+    <button class="btn" id="setBtn" type="button">設定</button>
+    <button class="btn primary" id="runBtn" type="button">開始</button>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><b id="sTime">10:00</b><span>残り</span></div>
+    <div class="stat"><b id="sQso">0</b><span>QSO</span></div>
+    <div class="stat"><b id="sMult">0</b><span>マルチ</span></div>
+    <div class="stat"><b id="sScore">0</b><span>得点</span></div>
+    <div class="stat"><b id="sRate">0</b><span>レート/h</span></div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div class="console">
+  <div class="fields">
+    <div class="field act" id="fCall"><label>CALL</label><div class="v" id="vCall"></div></div>
+    <div class="field" id="fNr"><label id="nrLabel">NR (例 13M)</label><div class="v" id="vNr"></div></div>
+  </div>
+
+  <div class="fkeys" id="fkeys"></div>
+  <div class="pad" id="pad"></div>
+  <div class="bottom">
+    <button class="k arrow" data-k="LEFT" type="button" aria-label="カーソルを左へ">◀</button>
+    <button class="k arrow" data-k="RIGHT" type="button" aria-label="カーソルを右へ">▶</button>
+    <button class="k esc" data-k="ESC" type="button">停止</button>
+    <button class="k esc" data-k="WIPE" type="button">消去</button>
+    <button class="k enter" data-k="ENTER" type="button">ENTER</button>
+  </div>
+  <div class="kbhint">
+    <p><kbd>Enter</kbd> 送信（ESM）　<kbd>F1</kbd>–<kbd>F8</kbd> メッセージ　<kbd>Space</kbd> 欄移動　<kbd>Ins</kbd> コール＋ナンバー　<kbd>Esc</kbd> 送信停止　<kbd>←</kbd><kbd>→</kbd> カーソル</p>
+    <button class="btn" id="padToggle" type="button">画面キーパッドを表示</button>
+  </div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head"><button class="btn back" id="backSet" type="button" aria-label="戻る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>戻る</button><h2>設定</h2><button class="btn primary" id="closeSet" type="button">完了</button></div>
+    <div class="grp">
+      <h3>自局</h3>
+      <label class="set"><span>コールサイン</span><input type="text" id="o_myCall" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+      <label class="set"><span>送るナンバー（ALL JA）<small>都府県支庁ナンバー＋空中線電力</small></span><input type="text" id="o_myNr" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+      <label class="set"><span>送るナンバー（DX）<small>CQゾーン（日本は25）</small></span><input type="text" id="o_myZone" autocomplete="off" inputmode="numeric" spellcheck="false"></label>
+      <label class="set"><span>CQ文<small>{MY} が自局コールに置き換わります</small></span><input type="text" id="o_cq" maxlength="40" autocomplete="off" spellcheck="false" style="width:11em"></label>
+      <label class="set"><span>TU文</span><input type="text" id="o_tu" maxlength="20" autocomplete="off" spellcheck="false"></label>
+      <label class="set"><span>自局ナンバーをカットで送る<small>0→T、9→N</small></span><input type="checkbox" id="o_cutMe"></label>
+    </div>
+    <div class="grp">
+      <h3>コンテスト</h3>
+      <label class="set"><span>コンテスト<small>次の開始から反映</small></span><select id="o_contest"><option value="ja">ALL JA（国内）</option><option value="dx">DX（599＋CQゾーン）</option></select></label>
+      <label class="set"><span>相手局<small>実在局は過去のコンテスト参加局から</small></span><select id="o_src"><option value="real">実在局</option><option value="random">ランダム生成</option></select></label>
+      <label class="set"><span>モード</span><select id="o_mode"><option value="pile">パイルアップ</option><option value="single">シングルコール</option></select></label>
+      <label class="set"><span>時間</span><select id="o_dur"><option value="5">5分</option><option value="10">10分</option><option value="30">30分</option><option value="60">60分</option><option value="0">無制限</option></select></label>
+      <label class="set"><span>アクティビティ</span><input type="range" id="o_act" min="1" max="9" step="1"><output id="w_act"></output></label>
+    </div>
+    <div class="grp">
+      <h3>受信音</h3>
+      <label class="set"><span>速度</span><input type="range" id="o_wpm" min="12" max="50" step="1"><output id="w_wpm"></output></label>
+      <label class="set"><span>相手局の速度にばらつき</span><input type="checkbox" id="o_wpmVar"></label>
+      <label class="set"><span>ピッチ</span><input type="range" id="o_pitch" min="300" max="900" step="10"><output id="w_pitch"></output></label>
+      <label class="set"><span>帯域幅</span><input type="range" id="o_bw" min="100" max="800" step="50"><output id="w_bw"></output></label>
+      <label class="set"><span>音量</span><input type="range" id="o_vol" min="0" max="1" step="0.05"><output id="w_vol"></output></label>
+      <label class="set"><span>相手局の信号の強さ</span><input type="range" id="o_sigP" min="0.1" max="1" step="0.05"><output id="w_sigP"></output></label>
+      <label class="set"><span>ノイズの量</span><input type="range" id="o_noise" min="0" max="1" step="0.05"><output id="w_noise"></output></label>
+      <label class="set"><span>モニター（自局送信音）</span><input type="range" id="o_mon" min="0" max="1" step="0.05"><output id="w_mon"></output></label>
+    </div>
+    <div class="grp">
+      <h3>コンディション</h3>
+      <label class="set"><span>QSB<small>フェージング</small></span><input type="checkbox" id="o_qsb"></label>
+      <label class="set"><span>QRM<small>近くで他局が運用</small></span><input type="checkbox" id="o_qrm"></label>
+      <label class="set"><span>QRN<small>空電ノイズ</small></span><input type="checkbox" id="o_qrn"></label>
+      <label class="set"><span>フラッター</span><input type="checkbox" id="o_flutter"></label>
+    </div>
+    <div class="grp">
+      <h3>初期設定</h3>
+      <p class="note">コールサイン以外の設定を、最初の状態に戻します。</p>
+      <p style="margin:6px 0 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="resetSet" type="button">初期設定に戻す</button><button class="btn primary" id="resetYes" type="button" hidden>戻す</button><button class="btn" id="resetNo" type="button" hidden>やめる</button></p>
+    </div>
+    <div class="grp">
+      <h3>操作</h3>
+      <p class="note">ENTER（ESM）：CALLが空ならCQ → コールを入れたら「コール＋5NN＋ナンバー」→ NRを入れたら TU を送ってログ。<br>
+      相手局が別のコールを返してきたら打ち間違い。CALLを直してENTERで送り直します。<br>
+      「?」を含むコール（例 JA1?）は部分コールとして送られ、該当局だけが応答します。<br>
+      物理キーボードでも操作できます（F1〜F8、Enter、Space で欄移動、Esc で送信停止）。</p>
+    </div>
+    <div class="grp">
+      <h3>ご意見・不具合の報告</h3>
+      <p class="note">使ってみた感想、ほしい機能、おかしな動きなどを送ってください。</p>
+      <p class="note">このサイトでは、利用状況（遊ばれた回数や得点の傾向など）の集計に Google アナリティクスを使っています。個人を特定する情報は集めていません。</p>
+      <p class="note">ランキングと意見の送信は reCAPTCHA で保護されています。Google の<a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--acc)">プライバシーポリシー</a>と<a href="https://policies.google.com/terms" target="_blank" rel="noopener" style="color:var(--acc)">利用規約</a>が適用されます。</p>
+      <p style="margin:6px 0 12px"><button class="btn primary" id="fbOpen1" type="button">意見を送る</button></p>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="fbSheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head"><button class="btn back" id="fbBack" type="button" aria-label="戻る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>戻る</button><h2>意見を送る</h2></div>
+    <form id="fbForm" class="fb">
+      <div class="seg" id="fbCat" role="radiogroup" aria-label="種類">
+        <button type="button" data-v="bug" aria-pressed="false">不具合</button>
+        <button type="button" data-v="idea" aria-pressed="true">要望・アイデア</button>
+        <button type="button" data-v="other" aria-pressed="false">その他</button>
+      </div>
+      <label class="fb-label" for="fbText">内容</label>
+      <textarea id="fbText" maxlength="1000" rows="7" placeholder="例：DXモードでゾーンを0付きで送る局をもっと増やしてほしい"></textarea>
+      <div class="fb-foot"><span id="fbCount">0 / 1000</span><span id="fbFrom"></span></div>
+      <button class="btn primary fb-send" id="fbSend" type="submit">送信</button>
+      <p class="fb-msg" id="fbMsg" role="status"></p>
+      <p class="note">コールサイン、使っている設定（モード・速度）、端末の種類が一緒に送られます。返信はできないので、連絡がほしい場合は本文に連絡先を書いてください。</p>
+    </form>
+  </div>
+</div>
+
+<div class="sheet" id="resSheet" hidden>
+  <div class="sheet-in result">
+    <div class="res-cat" id="rCat"></div>
+    <div class="tier">
+      <span class="tier-label">称号</span>
+      <span class="tier-name" id="rTier"></span>
+      <span class="pill gold" id="rTierUp" hidden>称号アップ！</span>
+    </div>
+    <div class="big" id="rScore">0</div>
+    <div class="pb" id="rPB"></div>
+    <div class="meter" aria-hidden="true"><i id="rBar"></i></div>
+    <div class="next" id="rNext"></div>
+    <div class="rgrid">
+      <div><b id="rQso">0</b><span>有効QSO</span></div>
+      <div><b id="rMult">0</b><span>マルチ</span></div>
+      <div><b id="rRate">0</b><span>平均レート/h</span></div>
+      <div><b id="rAcc">0%</b><span>正確さ</span></div>
+      <div><b id="rStreak">0</b><span>最高連続正解</span></div>
+      <div><b id="rMiss" style="color:var(--bad)">0</b><span>ミス（誤り・NIL・DUP）</span></div>
+    </div>
+    <div class="graph"><div class="graph-h">1分ごとのQSO数</div><svg id="rGraph" viewBox="0 0 300 64" preserveAspectRatio="none" role="img" aria-label="1分ごとのQSO数"></svg></div>
+    <div class="bestline" id="rBoard"></div>
+    <div class="badges-new" id="rNew" hidden><div class="graph-h">新しい実績</div><div class="chips" id="rNewList"></div></div>
+    <div class="days" id="rDays"></div>
+    <div class="res-actions">
+      <button class="btn primary again" id="resAgain" type="button">もう一回</button>
+      <div class="res-row"><button class="btn" id="resShare" type="button">結果をコピー</button><button class="btn" id="resBoard" type="button">ランキング</button><button class="btn" id="resClose" type="button">ログ</button></div>
+    </div>
+    <p class="fb-link"><button class="linkbtn" id="fbOpen2" type="button">意見・不具合を送る</button></p>
+    <details class="achv"><summary id="rAchSum">実績</summary><div class="chips" id="rAchAll"></div></details>
+  </div>
+</div>
+
+<div class="sheet" id="loginSheet" hidden>
+  <form class="login-in" id="loginForm">
+    <h2>JA CW RUNNER</h2>
+    <p>コールサインでログインします。送信するコールとランキングの名前に使われます。</p>
+    <input type="text" id="loginCall" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="JA1ZZZ" maxlength="12" aria-label="コールサイン">
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary" type="submit">はじめる</button>
+    <p>ランキングに載るのは時間を決めたコンテスト（5〜60分）を最後まで走り切った結果です。途中で停止した回と「無制限」は記録されません。</p>
+  </form>
+</div>
+
+<div class="sheet" id="boardSheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head"><button class="btn back" id="boardBack" type="button" aria-label="戻る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>戻る</button><h2>ランキング</h2></div>
+    <div class="seg seg-main" id="segKind"><button type="button" data-v="score">スコア</button><button type="button" data-v="practice">練習量（今月）</button></div>
+    <div id="scoreTabs">
+    <div class="seg" id="segContest"><button type="button" data-v="ja">ALL JA</button><button type="button" data-v="dx">DX</button></div>
+    <div class="seg" id="segMode"><button type="button" data-v="pile">パイルアップ</button><button type="button" data-v="single">シングルコール</button></div>
+    <div class="seg" id="segDur"><button type="button" data-v="5">5分</button><button type="button" data-v="10">10分</button><button type="button" data-v="30">30分</button><button type="button" data-v="60">60分</button></div>
+    </div>
+    <div class="board" id="boardList"></div>
+    <p class="note" id="boardNote"></p>
+  </div>
+</div>
+
+<script src="cwr-data.js"></script>
+<script>
+(()=>{
+@@JS@@})();
+</script>
