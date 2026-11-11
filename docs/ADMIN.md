@@ -134,7 +134,18 @@ Firebase コンソール → Firestore → `scores` → その人の行の「︙
 `deploy.yml` の「Firestore ルールを反映」は、GitHub のリポジトリ変数
 `GCP_WORKLOAD_IDENTITY_PROVIDER` と `GCP_SERVICE_ACCOUNT` が設定されているときだけ動きます。
 鍵ファイルを使わない「Workload Identity 連携」で、このリポジトリの main からだけ、ルールの更新だけができる設定です。
-未設定のあいだは、`firestore.rules` を直したら Firebase コンソールの「ルール」に同じ内容を貼って公開してください。
+**設定済み**（2026年11月）。変数が消えるなどして未設定になったときは、`firestore.rules` を直したら Firebase コンソールの「ルール」に同じ内容を貼って公開してください。
 
-設定は `tools/setup-gcp-wif.sh` を Google Cloud Shell で1回実行し、表示された2つの値を GitHub のリポジトリ変数に登録するだけです。
+現在の設定：
+
+| 項目 | 値 |
+|---|---|
+| サービスアカウント | `github-rules-deploy@cw-runner.iam.gserviceaccount.com`（ロール：Firebase ルール管理者、Firebase 閲覧者、Cloud Datastore 閲覧者、Service Usage コンシューマー） |
+| Workload Identity プール／プロバイダ | `github` ／ `github-actions`（発行元 `https://token.actions.githubusercontent.com`） |
+| 属性の対応 | `google.subject=assertion.sub`、`attribute.repository=assertion.repository`、`attribute.ref=assertion.ref` |
+| 属性条件 | `assertion.repository=='jj1iyu/cw-runner' && assertion.ref=='refs/heads/main'` |
+| なりすまし許可 | プールの `repository = jj1iyu/cw-runner` にサービスアカウントの利用を許可 |
+| GitHub リポジトリ変数 | `GCP_WORKLOAD_IDENTITY_PROVIDER`、`GCP_SERVICE_ACCOUNT` |
+
+作り直すときは `tools/setup-gcp-wif.sh` を Google Cloud Shell で実行するか、上の表のとおり Google Cloud コンソールで作り、2つの値を GitHub の Settings → Secrets and variables → Actions → Variables に登録します。
 連携をやめるときは、Google Cloud の「IAM と管理」→「Workload Identity 連携」でプール `github` を削除し、サービスアカウント `github-rules-deploy` を削除します。
