@@ -135,3 +135,6 @@ Firebase コンソール → Firestore → `scores` → その人の行の「︙
 `GCP_WORKLOAD_IDENTITY_PROVIDER` と `GCP_SERVICE_ACCOUNT` が設定されているときだけ動きます。
 鍵ファイルを使わない「Workload Identity 連携」で、このリポジトリの main からだけ、ルールの更新だけができる設定です。
 未設定のあいだは、`firestore.rules` を直したら Firebase コンソールの「ルール」に同じ内容を貼って公開してください。
+
+設定は `tools/setup-gcp-wif.sh` を Google Cloud Shell で1回実行し、表示された2つの値を GitHub のリポジトリ変数に登録するだけです。
+連携をやめるときは、Google Cloud の「IAM と管理」→「Workload Identity 連携」でプール `github` を削除し、サービスアカウント `github-rules-deploy` を削除します。
