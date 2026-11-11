@@ -1,10 +1,10 @@
 # main に push すると：テスト → ビルド → GitHub Pages に公開 → Firestore のルールを反映
-# pull request では テスト と ビルド だけ行います（公開はしません）
+# main 以外のブランチや pull request では テスト だけ行います（公開はしません）
 name: テストと公開
 
 on:
   push:
-    branches: [main]
+    branches: ['**'] # main 以外のブランチではテストだけ行う
   pull_request:
   workflow_dispatch:
 
